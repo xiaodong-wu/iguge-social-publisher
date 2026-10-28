@@ -12,7 +12,7 @@ from typing import Any
 
 import hashlib
 from PIL import Image
-from optimize_image import validate as validate_webp
+from optimize_image import validate as validate_webp, inspect_metadata
 from update_manifest import IDENTITIES, load_manifest
 from scrape_product import normalize_url, is_product_path
 from urllib.parse import urlparse
@@ -46,15 +46,13 @@ def is_linkedin_bullet(line: str) -> bool:
 
 def validate_facebook(value: str, product_url: str) -> dict[str, int]:
     count = word_count(value)
-    if not 80 <= count <= 150:
-        raise ValueError(f"Facebook copy must be 80–150 English words; received {count}")
+    if not 45 <= count <= 120:
+        raise ValueError(f"Facebook copy must be 45–120 English words; received {count}")
     lines = [line for line in value.splitlines() if line.strip()]
-    features = sum(is_feature_line(line) for line in lines[:4])
-    if features != 4:
-        raise ValueError(f"Facebook copy must begin with four emoji feature lines; received {features}")
+    features = sum(is_feature_line(line) for line in lines)
     hashtags = hashtag_count(value)
-    if not 8 <= hashtags <= 12:
-        raise ValueError(f"Facebook copy must contain 8–12 unique hashtags; received {hashtags}")
+    if hashtags > 5:
+        raise ValueError(f"Facebook copy may contain at most 5 unique hashtags; received {hashtags}")
     if product_url not in value:
         raise ValueError("Facebook copy does not contain the selected product URL")
     return {"words": count, "feature_lines": features, "hashtags": hashtags}
@@ -62,15 +60,15 @@ def validate_facebook(value: str, product_url: str) -> dict[str, int]:
 
 def validate_linkedin(value: str, product_url: str) -> dict[str, int]:
     count = word_count(value)
-    if not 150 <= count <= 250:
-        raise ValueError(f"LinkedIn copy must be 150–250 English words; received {count}")
+    if not 75 <= count <= 180:
+        raise ValueError(f"LinkedIn copy must be 75–180 English words; received {count}")
     lines = [line for line in value.splitlines() if line.strip()]
     bullets = sum(is_linkedin_bullet(line) for line in lines)
-    if not 3 <= bullets <= 5:
-        raise ValueError(f"LinkedIn copy must contain 3–5 feature bullets; received {bullets}")
+    if bullets > 5:
+        raise ValueError(f"LinkedIn copy may contain at most 5 feature bullets; received {bullets}")
     hashtags = hashtag_count(value)
-    if not 3 <= hashtags <= 5:
-        raise ValueError(f"LinkedIn copy must contain 3–5 unique hashtags; received {hashtags}")
+    if hashtags > 5:
+        raise ValueError(f"LinkedIn copy may contain at most 5 unique hashtags; received {hashtags}")
     if product_url not in value:
         raise ValueError("LinkedIn copy does not contain the selected product URL")
     return {"words": count, "feature_bullets": bullets, "hashtags": hashtags}
@@ -90,14 +88,15 @@ def digest(path):
 def validate_transport(path):
     if path.stat().st_size > 750 * 1024:
         raise ValueError("Transport image exceeds 750 KiB")
+    metadata = inspect_metadata(path)
+    if not metadata['metadata_removed']:
+        raise ValueError('Transport still has embedded metadata')
     with Image.open(path) as im:
         im.verify()
     with Image.open(path) as im:
         if im.format != "JPEG" or im.width != im.height or im.width < 960:
             raise ValueError("Transport must be square JPEG, at least 960 x 960")
-        if im.getexif() or any(k in im.info for k in ("exif", "icc_profile", "xmp", "comment")):
-            raise ValueError("Transport still has embedded metadata")
-        return {"format":"JPEG", "size":list(im.size), "bytes":path.stat().st_size}
+        return {"format":"JPEG", "size":list(im.size), "bytes":path.stat().st_size, "metadata":metadata}
 
 
 def validate_campaign(manifest):

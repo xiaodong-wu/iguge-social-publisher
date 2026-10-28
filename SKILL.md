@@ -51,13 +51,13 @@ description: 为 iGuge healthy 从 igugehealthy.com/products/ 随机或指定选
    作为身份参考生成一张正方形四宫格图。遵循内容规范的有界修正流程。将实际生成文件
    复制到运行目录后，执行 `scripts/optimize_image.py INPUT RUN_DIR/social.webp --kind social
    --transport-jpeg RUN_DIR/social-upload.jpg`。规范资产为无元数据 WebP；社媒上传使用
-   临时 JPEG。无需创建其他图片。
+   临时 JPEG。保存实际导出元数据检查结果；AI 披露按发布流程单独判断，不承诺避免平台识别。
 5. **全批次校验。** 按内容规范完成 `evidence/review.json`，包含源事实、文案和图片
    审核及最终文件 SHA-256。执行 `scripts/validate_campaign.py MANIFEST`。修改已审核
    文件后重新检查并更新相应审核。全部通过才可发布；dry-run 在此结束并报告草稿路径。
 6. **双平台发布。** 遵循发布流程，在每个平台最终提交前记录
    `scripts/update_manifest.py MANIFEST --channel facebook|linkedin --status pending --submission-started`。
-   核对预览、身份、文案和图片后仅提交一次。查看实际发布列表与帖子页面，保存核验记录、
+   核对预览、身份、自然简洁的文案、图片及可选 AI 设置后仅提交一次。查看实际发布列表与帖子页面，保存核验记录、
    公开帖子链接和发布身份，再记录 `published`。结果不明先核对，禁止猜测重发。
 7. **报告。** 两条帖子核验成功后立即按 [记录规范](references/reporting.md) 写入并
    回读原 `social-auto-upload` 表的一条五列表格记录。C 列使用 `不适用（仅社媒）`，

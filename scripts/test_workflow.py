@@ -9,9 +9,9 @@ from unittest.mock import patch
 from PIL import Image
 import scrape_product as scrape
 from content_plan import build_content_plan
-from optimize_image import strip_metadata, compress, validate, create_transport_jpeg
+from optimize_image import strip_metadata, compress, validate, create_transport_jpeg, inspect_metadata
 from update_manifest import load_manifest, write_manifest, update_manifest, validate_post_url, SHEET_ID, SHEET_URL, IDENTITIES
-from validate_campaign import validate_campaign, digest
+from validate_campaign import validate_campaign, digest, validate_facebook, validate_linkedin, validate_transport
 from validate_completion import expected_row, validate_completion
 
 URL='https://www.igugehealthy.com/mushroom-coffee-12345.html'
@@ -49,28 +49,18 @@ class WorkflowTests(unittest.TestCase):
         with patch.object(scrape,'fetch_bytes',return_value=(b.getvalue(),'image/png')):
             run=scrape.create_run(product,self.root,plan,mode)
         path=run/'manifest.json';m=load_manifest(path)
-        fb='''☕ A powder format gives your team a clear starting point for product evaluation.
-🍄 Coffee powder and a mushroom blend are listed as the main ingredients.
-📦 The published minimum order quantity is five hundred boxes for this product.
-✅ Private label, OEM and ODM services are listed for sourcing discussions.
+        fb='''Mushroom Coffee Powder combines coffee powder with a mushroom blend. We offer private label, OEM and ODM services, with a minimum order of 500 boxes.
 
-Compare the product information with your brand brief. Confirm the complete formula, serving specification and preferred packaging during sample discussions. Bring your target market and estimated order quantity so the final specification can be agreed before ordering.
+Planning a coffee product for your brand? Send iGuge healthy your target market and estimated quantity. We can discuss the formula and packaging requirements for your project.
 
-Contact iGuge healthy to discuss your product requirements.
+'''+URL+'\n\n#MushroomCoffee #PrivateLabel #OEM'
+        li='''For brands exploring mushroom coffee, our Mushroom Coffee Powder combines coffee powder with a mushroom blend in a powder format. Private label, OEM and ODM services are available, with a minimum order of 500 boxes.
 
-'''+URL+'\n\n#Coffee #MushroomCoffee #Powder #PrivateLabel #Sourcing #OEM #ODM #ProductDevelopment'
-        li='''Planning a coffee product for your brand begins with a clear sourcing brief. The published product information provides a starting point for discussing the format, ingredient direction and order requirements with the supplier.
+The product page gives the ingredient direction; individual mushroom species, quantities and final packaging still need to be agreed for your selected formula. Those details belong in the sample specification before an order is placed.
 
-- The product is presented in powder format.
-- Coffee powder and a mushroom blend are listed as the main ingredients.
-- The published minimum order quantity is five hundred boxes.
-- Private label, OEM and ODM services are listed for discussion.
+Contact iGuge healthy with your target market and estimated quantity to discuss your coffee product requirements.
 
-Use these details to prepare a sample brief that separates the listed product facts from choices still to be agreed. Ask for the complete ingredient declaration, serving specification and intended packaging. A mushroom blend description does not establish individual species or ingredient quantities, so those details should be confirmed for the selected formula. Record the agreed sample requirements and artwork before moving to an order.
-
-Contact iGuge healthy with your target market, estimated quantity and preferred format. Discuss the proposed product specification and request the information your sourcing team needs to evaluate the next step.
-
-'''+URL+'\n\n#Coffee #ProductDevelopment #PrivateLabel'
+'''+URL+'\n\n#MushroomCoffee #PrivateLabel #ProductDevelopment'
         Path(m['artifacts']['facebook_copy']).write_text(fb)
         Path(m['artifacts']['linkedin_copy']).write_text(li)
         im=Image.new('RGB',(1000,1000),'#c39988');enc,final,_=compress(strip_metadata(im),750*1024,(960,960))
@@ -195,5 +185,26 @@ Contact iGuge healthy with your target market, estimated quantity and preferred 
         clean=strip_metadata(image);self.assertFalse(clean.info)
         enc,_,_=compress(clean,750*1024,(960,960));p=self.root/'image.webp';p.write_bytes(enc)
         self.assertTrue(validate(p,'social',750*1024)['metadata_removed'])
+
+    def test_short_paragraph_copy_does_not_require_icons_bullets_or_hashtags(self):
+        path,m=self.campaign()
+        fb=Path(m['artifacts']['facebook_copy']).read_text().split('\n\n#')[0]
+        li=Path(m['artifacts']['linkedin_copy']).read_text().split('\n\n#')[0]
+        self.assertEqual(validate_facebook(fb,URL)['feature_lines'],0)
+        self.assertEqual(validate_linkedin(li,URL)['feature_bullets'],0)
+        for checker,value in [(validate_facebook,fb),(validate_linkedin,li)]:
+            self.assertEqual(checker(value,URL)['hashtags'],0)
+            with self.assertRaisesRegex(ValueError,'hashtags'):
+                checker(value+'\n#One #Two #Three #Four #Five #Six',URL)
+
+    def test_unknown_jpeg_application_metadata_is_rejected(self):
+        p=self.root/'upload.jpg'
+        create_transport_jpeg(strip_metadata(Image.new('RGB',(1000,1000))),p)
+        self.assertTrue(inspect_metadata(p)['metadata_removed'])
+        raw=p.read_bytes();payload=b'non-image application fixture'
+        p.write_bytes(raw[:2]+b'\xff\xeb'+(len(payload)+2).to_bytes(2,'big')+payload+raw[2:])
+        self.assertIn('APP11',inspect_metadata(p)['embedded_metadata'])
+        with self.assertRaisesRegex(ValueError,'metadata'):
+            validate_transport(p)
 
 if __name__=='__main__': unittest.main(verbosity=2)

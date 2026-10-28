@@ -77,6 +77,25 @@ def encode_jpeg(image: Image.Image, quality: int) -> bytes:
     return buffer.getvalue()
 
 
+def inspect_metadata(path: Path) -> dict[str, object]:
+    """Audit the exported container; this does not predict platform AI labels."""
+    with Image.open(path) as image:
+        embedded = [key for key in ("exif", "xmp", "icc_profile", "comment") if key in image.info]
+        exif_entries = len(image.getexif())
+        if exif_entries and "exif" not in embedded:
+            embedded.append("exif")
+        markers = []
+        for name, payload in getattr(image, "applist", []):
+            markers.append({"marker": name, "bytes": len(payload)})
+            if not (name == "APP0" and payload.startswith(b"JFIF\x00")):
+                embedded.append(name)
+        if image.format == "WEBP":
+            embedded.extend(metadata_chunks(path.read_bytes()))
+        return {"format": image.format, "exif_entries": exif_entries,
+                "jpeg_markers": markers, "embedded_metadata": sorted(set(embedded)),
+                "metadata_removed": not embedded}
+
+
 def create_transport_jpeg(image: Image.Image, path: Path) -> dict[str, object]:
     for quality in range(90, 71, -2):
         encoded = encode_jpeg(image, quality)
@@ -85,11 +104,12 @@ def create_transport_jpeg(image: Image.Image, path: Path) -> dict[str, object]:
             path.write_bytes(encoded)
             with Image.open(path) as check:
                 check.verify()
+            metadata = inspect_metadata(path)
             with Image.open(path) as check:
-                if check.format != "JPEG" or check.getexif() or any(key in check.info for key in ("exif", "icc_profile", "xmp")):
+                if check.format != "JPEG" or not metadata["metadata_removed"]:
                     raise RuntimeError("Transport derivative must be metadata-free JPEG")
                 width, height = check.size
-            return {"path": str(path), "format": "JPEG", "quality": quality, "bytes": len(encoded), "width": width, "height": height, "metadata_removed": True}
+            return {"path": str(path), "format": "JPEG", "quality": quality, "bytes": len(encoded), "width": width, "height": height, "metadata_removed": True, "metadata": metadata}
     raise RuntimeError("Unable to create the temporary social-upload JPEG below 750 KiB")
 
 
@@ -139,7 +159,8 @@ def validate(path: Path, kind: str, max_bytes: int) -> dict[str, object]:
         width, height = image.size
     if min(width, height) < 960:
         raise ValueError("Social image must be at least 960 x 960 pixels")
-    embedded_metadata = metadata_chunks(path.read_bytes())
+    metadata = inspect_metadata(path)
+    embedded_metadata = metadata["embedded_metadata"]
     if embedded_metadata:
         raise RuntimeError(f"Output still contains metadata chunks: {', '.join(embedded_metadata)}")
     ratio = width / height
@@ -155,6 +176,7 @@ def validate(path: Path, kind: str, max_bytes: int) -> dict[str, object]:
         "bytes": size,
         "max_bytes": max_bytes,
         "metadata_removed": True,
+        "metadata": metadata,
     }
 
 

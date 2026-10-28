@@ -46,13 +46,15 @@ def is_linkedin_bullet(line: str) -> bool:
 
 def validate_facebook(value: str, product_url: str) -> dict[str, int]:
     count = word_count(value)
-    if not 45 <= count <= 120:
-        raise ValueError(f"Facebook copy must be 45–120 English words; received {count}")
+    if not 80 <= count <= 150:
+        raise ValueError(f"Facebook copy must be 80–150 English words; received {count}")
     lines = [line for line in value.splitlines() if line.strip()]
-    features = sum(is_feature_line(line) for line in lines)
+    features = sum(is_feature_line(line) for line in lines[:4])
+    if features != 4:
+        raise ValueError(f"Facebook copy must begin with four emoji feature lines; received {features}")
     hashtags = hashtag_count(value)
-    if hashtags > 5:
-        raise ValueError(f"Facebook copy may contain at most 5 unique hashtags; received {hashtags}")
+    if not 8 <= hashtags <= 12:
+        raise ValueError(f"Facebook copy must contain 8–12 unique hashtags; received {hashtags}")
     if product_url not in value:
         raise ValueError("Facebook copy does not contain the selected product URL")
     return {"words": count, "feature_lines": features, "hashtags": hashtags}
@@ -60,15 +62,15 @@ def validate_facebook(value: str, product_url: str) -> dict[str, int]:
 
 def validate_linkedin(value: str, product_url: str) -> dict[str, int]:
     count = word_count(value)
-    if not 75 <= count <= 180:
-        raise ValueError(f"LinkedIn copy must be 75–180 English words; received {count}")
+    if not 150 <= count <= 250:
+        raise ValueError(f"LinkedIn copy must be 150–250 English words; received {count}")
     lines = [line for line in value.splitlines() if line.strip()]
     bullets = sum(is_linkedin_bullet(line) for line in lines)
-    if bullets > 5:
-        raise ValueError(f"LinkedIn copy may contain at most 5 feature bullets; received {bullets}")
+    if not 3 <= bullets <= 5:
+        raise ValueError(f"LinkedIn copy must contain 3–5 feature bullets; received {bullets}")
     hashtags = hashtag_count(value)
-    if hashtags > 5:
-        raise ValueError(f"LinkedIn copy may contain at most 5 unique hashtags; received {hashtags}")
+    if not 3 <= hashtags <= 5:
+        raise ValueError(f"LinkedIn copy must contain 3–5 unique hashtags; received {hashtags}")
     if product_url not in value:
         raise ValueError("LinkedIn copy does not contain the selected product URL")
     return {"words": count, "feature_bullets": bullets, "hashtags": hashtags}

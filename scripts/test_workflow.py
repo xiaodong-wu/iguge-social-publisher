@@ -49,18 +49,28 @@ class WorkflowTests(unittest.TestCase):
         with patch.object(scrape,'fetch_bytes',return_value=(b.getvalue(),'image/png')):
             run=scrape.create_run(product,self.root,plan,mode)
         path=run/'manifest.json';m=load_manifest(path)
-        fb='''Mushroom Coffee Powder combines coffee powder with a mushroom blend. We offer private label, OEM and ODM services, with a minimum order of 500 boxes.
+        fb='''☕ A powder format gives your team a clear starting point for product evaluation.
+🍄 Coffee powder and a mushroom blend are listed as the main ingredients.
+📦 The published minimum order quantity is five hundred boxes for this product.
+✅ Private label, OEM and ODM services are listed for sourcing discussions.
 
-Planning a coffee product for your brand? Send iGuge healthy your target market and estimated quantity. We can discuss the formula and packaging requirements for your project.
+Compare the product information with your brand brief. Confirm the complete formula, serving specification and preferred packaging during sample discussions. Bring your target market and estimated order quantity so the final specification can be agreed before ordering.
 
-'''+URL+'\n\n#MushroomCoffee #PrivateLabel #OEM'
-        li='''For brands exploring mushroom coffee, our Mushroom Coffee Powder combines coffee powder with a mushroom blend in a powder format. Private label, OEM and ODM services are available, with a minimum order of 500 boxes.
+Contact iGuge healthy to discuss your product requirements.
 
-The product page gives the ingredient direction; individual mushroom species, quantities and final packaging still need to be agreed for your selected formula. Those details belong in the sample specification before an order is placed.
+'''+URL+'\n\n#Coffee #MushroomCoffee #Powder #PrivateLabel #Sourcing #OEM #ODM #ProductDevelopment'
+        li='''Planning a coffee product for your brand begins with a clear sourcing brief. The published product information provides a starting point for discussing the format, ingredient direction and order requirements with the supplier.
 
-Contact iGuge healthy with your target market and estimated quantity to discuss your coffee product requirements.
+- The product is presented in powder format.
+- Coffee powder and a mushroom blend are listed as the main ingredients.
+- The published minimum order quantity is five hundred boxes.
+- Private label, OEM and ODM services are listed for discussion.
 
-'''+URL+'\n\n#MushroomCoffee #PrivateLabel #ProductDevelopment'
+Use these details to prepare a sample brief that separates the listed product facts from choices still to be agreed. Ask for the complete ingredient declaration, serving specification and intended packaging. A mushroom blend description does not establish individual species or ingredient quantities, so those details should be confirmed for the selected formula. Record the agreed sample requirements and artwork before moving to an order.
+
+Contact iGuge healthy with your target market, estimated quantity and preferred format. Discuss the proposed product specification and request the information your sourcing team needs to evaluate the next step.
+
+'''+URL+'\n\n#Coffee #ProductDevelopment #PrivateLabel'
         Path(m['artifacts']['facebook_copy']).write_text(fb)
         Path(m['artifacts']['linkedin_copy']).write_text(li)
         im=Image.new('RGB',(1000,1000),'#c39988');enc,final,_=compress(strip_metadata(im),750*1024,(960,960))
@@ -186,16 +196,18 @@ Contact iGuge healthy with your target market and estimated quantity to discuss 
         enc,_,_=compress(clean,750*1024,(960,960));p=self.root/'image.webp';p.write_bytes(enc)
         self.assertTrue(validate(p,'social',750*1024)['metadata_removed'])
 
-    def test_short_paragraph_copy_does_not_require_icons_bullets_or_hashtags(self):
+    def test_original_social_copy_format_is_required(self):
         path,m=self.campaign()
-        fb=Path(m['artifacts']['facebook_copy']).read_text().split('\n\n#')[0]
-        li=Path(m['artifacts']['linkedin_copy']).read_text().split('\n\n#')[0]
-        self.assertEqual(validate_facebook(fb,URL)['feature_lines'],0)
-        self.assertEqual(validate_linkedin(li,URL)['feature_bullets'],0)
-        for checker,value in [(validate_facebook,fb),(validate_linkedin,li)]:
-            self.assertEqual(checker(value,URL)['hashtags'],0)
-            with self.assertRaisesRegex(ValueError,'hashtags'):
-                checker(value+'\n#One #Two #Three #Four #Five #Six',URL)
+        fb=Path(m['artifacts']['facebook_copy']).read_text()
+        li=Path(m['artifacts']['linkedin_copy']).read_text()
+        self.assertEqual(validate_facebook(fb,URL)['feature_lines'],4)
+        self.assertEqual(validate_linkedin(li,URL)['feature_bullets'],4)
+        with self.assertRaisesRegex(ValueError,'emoji feature lines'):
+            validate_facebook(fb.replace('☕ ','',1),URL)
+        with self.assertRaisesRegex(ValueError,'hashtags'):
+            validate_facebook(fb.replace('#Coffee ','',1),URL)
+        with self.assertRaisesRegex(ValueError,'feature bullets'):
+            validate_linkedin(li.replace('- ',''),URL)
 
     def test_unknown_jpeg_application_metadata_is_rejected(self):
         p=self.root/'upload.jpg'

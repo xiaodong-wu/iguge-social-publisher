@@ -57,7 +57,7 @@ description: 为 iGuge healthy 从 igugehealthy.com/products/ 随机或指定选
    文件后重新检查并更新相应审核。全部通过才可发布；dry-run 在此结束并报告草稿路径。
 6. **双平台发布。** 遵循发布流程，在每个平台最终提交前记录
    `scripts/update_manifest.py MANIFEST --channel facebook|linkedin --status pending --submission-started`。
-   核对预览、身份、自然简洁的文案、图片及可选 AI 设置后仅提交一次。查看实际发布列表与帖子页面，保存核验记录、
+   核对预览、身份、对应格式的文案、图片及可选 AI 设置后仅提交一次。查看实际发布列表与帖子页面，保存核验记录、
    公开帖子链接和发布身份，再记录 `published`。结果不明先核对，禁止猜测重发。
 7. **报告。** 两条帖子核验成功后立即按 [记录规范](references/reporting.md) 写入并
    回读原 `social-auto-upload` 表的一条五列表格记录。C 列使用 `不适用（仅社媒）`，

@@ -20,6 +20,10 @@ from urllib.parse import urlparse
 
 WORD_RE = re.compile(r"[A-Za-z]+(?:[-'][A-Za-z]+)*")
 HASHTAG_RE = re.compile(r"(?<!\w)#[A-Za-z][A-Za-z0-9_]*")
+WEBSITE_LINK_RE = re.compile(
+    r"https?://|(?<![\w@.-])(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}\b",
+    re.I,
+)
 
 
 def word_count(value: str) -> int:
@@ -44,7 +48,13 @@ def is_linkedin_bullet(line: str) -> bool:
     return stripped.startswith(("-", "•", "▪", "‣", "✅", "🌿", "🏭", "📦"))
 
 
-def validate_facebook(value: str, product_url: str) -> dict[str, int]:
+def validate_no_website_links(value: str) -> None:
+    if WEBSITE_LINK_RE.search(value):
+        raise ValueError("Social copy must not contain website links or bare domains")
+
+
+def validate_facebook(value: str) -> dict[str, int]:
+    validate_no_website_links(value)
     count = word_count(value)
     if not 80 <= count <= 150:
         raise ValueError(f"Facebook copy must be 80–150 English words; received {count}")
@@ -55,12 +65,11 @@ def validate_facebook(value: str, product_url: str) -> dict[str, int]:
     hashtags = hashtag_count(value)
     if not 8 <= hashtags <= 12:
         raise ValueError(f"Facebook copy must contain 8–12 unique hashtags; received {hashtags}")
-    if product_url not in value:
-        raise ValueError("Facebook copy does not contain the selected product URL")
     return {"words": count, "feature_lines": features, "hashtags": hashtags}
 
 
-def validate_linkedin(value: str, product_url: str) -> dict[str, int]:
+def validate_linkedin(value: str) -> dict[str, int]:
+    validate_no_website_links(value)
     count = word_count(value)
     if not 150 <= count <= 250:
         raise ValueError(f"LinkedIn copy must be 150–250 English words; received {count}")
@@ -71,8 +80,6 @@ def validate_linkedin(value: str, product_url: str) -> dict[str, int]:
     hashtags = hashtag_count(value)
     if not 3 <= hashtags <= 5:
         raise ValueError(f"LinkedIn copy must contain 3–5 unique hashtags; received {hashtags}")
-    if product_url not in value:
-        raise ValueError("LinkedIn copy does not contain the selected product URL")
     return {"words": count, "feature_bullets": bullets, "hashtags": hashtags}
 
 
@@ -115,9 +122,7 @@ def validate_campaign(manifest):
     li = artifact_path(manifest,'linkedin_copy').read_text(encoding='utf-8').strip()
     for value in (fb,li):
         if re.search(r'[\u3400-\u9fff]',value): raise ValueError('Social copy must be English')
-        if re.findall(r'https?://[^\s]+',value) != [product_url]:
-            raise ValueError('Each post must contain only the full canonical product URL, exactly once')
-        if product_url not in value.splitlines(): raise ValueError('Product URL needs its own line')
+        validate_no_website_links(value)
     if fb==li: raise ValueError('Write platform-specific copy')
     plan=json.loads(artifact_path(manifest,'content_plan').read_text())
     if plan.get('source_url')!=product_url or not plan.get('core_keyword'):
@@ -136,7 +141,7 @@ def validate_campaign(manifest):
             raise ValueError(f'Review is missing or stale for {key}; inspect final artifacts again')
     social=artifact_path(manifest,'social_image')
     return {'status':'validated', 'mode':manifest['mode'],
-            'facebook':validate_facebook(fb,product_url), 'linkedin':validate_linkedin(li,product_url),
+            'facebook':validate_facebook(fb), 'linkedin':validate_linkedin(li),
             'social':validate_webp(social,'social',750*1024),
             'transport':validate_transport(artifact_path(manifest,'social_upload')),
             'editorial_review':'recorded; source and image judgment remains the agent responsibility'}

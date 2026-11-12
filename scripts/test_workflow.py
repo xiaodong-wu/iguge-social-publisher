@@ -58,7 +58,7 @@ Compare the product information with your brand brief. Confirm the complete form
 
 Contact iGuge healthy to discuss your product requirements.
 
-'''+URL+'\n\n#Coffee #MushroomCoffee #Powder #PrivateLabel #Sourcing #OEM #ODM #ProductDevelopment'
+#Coffee #MushroomCoffee #Powder #PrivateLabel #Sourcing #OEM #ODM #ProductDevelopment'''
         li='''Planning a coffee product for your brand begins with a clear sourcing brief. The published product information provides a starting point for discussing the format, ingredient direction and order requirements with the supplier.
 
 - The product is presented in powder format.
@@ -70,7 +70,7 @@ Use these details to prepare a sample brief that separates the listed product fa
 
 Contact iGuge healthy with your target market, estimated quantity and preferred format. Discuss the proposed product specification and request the information your sourcing team needs to evaluate the next step.
 
-'''+URL+'\n\n#Coffee #ProductDevelopment #PrivateLabel'
+#Coffee #ProductDevelopment #PrivateLabel'''
         Path(m['artifacts']['facebook_copy']).write_text(fb)
         Path(m['artifacts']['linkedin_copy']).write_text(li)
         im=Image.new('RGB',(1000,1000),'#c39988');enc,final,_=compress(strip_metadata(im),750*1024,(960,960))
@@ -200,14 +200,39 @@ Contact iGuge healthy with your target market, estimated quantity and preferred 
         path,m=self.campaign()
         fb=Path(m['artifacts']['facebook_copy']).read_text()
         li=Path(m['artifacts']['linkedin_copy']).read_text()
-        self.assertEqual(validate_facebook(fb,URL)['feature_lines'],4)
-        self.assertEqual(validate_linkedin(li,URL)['feature_bullets'],4)
+        self.assertEqual(validate_facebook(fb)['feature_lines'],4)
+        self.assertEqual(validate_linkedin(li)['feature_bullets'],4)
         with self.assertRaisesRegex(ValueError,'emoji feature lines'):
-            validate_facebook(fb.replace('☕ ','',1),URL)
+            validate_facebook(fb.replace('☕ ','',1))
         with self.assertRaisesRegex(ValueError,'hashtags'):
-            validate_facebook(fb.replace('#Coffee ','',1),URL)
+            validate_facebook(fb.replace('#Coffee ','',1))
         with self.assertRaisesRegex(ValueError,'feature bullets'):
-            validate_linkedin(li.replace('- ',''),URL)
+            validate_linkedin(li.replace('- ',''))
+
+    def test_website_links_block_submission_but_source_urls_remain(self):
+        path,m=self.campaign()
+        self.assertEqual(validate_campaign(m)['status'],'validated')
+        self.assertEqual(m['product']['canonical_url'],URL)
+        self.assertEqual(json.loads(Path(m['artifacts']['content_plan']).read_text())['source_url'],URL)
+        links=[URL,'http://igugehealthy.com','www.igugehealthy.com/products/',
+               'igugehealthy.com','https://lnkd.in/example','bit.ly/example',
+               '[Product](https://example.com/item)']
+        for key,checker in [('facebook_copy',validate_facebook),('linkedin_copy',validate_linkedin)]:
+            value=Path(m['artifacts'][key]).read_text()
+            self.assertNotIn(URL,value)
+            for link in links:
+                with self.subTest(channel=key,link=link), self.assertRaisesRegex(ValueError,'website links'):
+                    checker(value+'\n'+link)
+        # A freshly reviewed draft with a link must still fail at the live submission gate.
+        copy=Path(m['artifacts']['facebook_copy'])
+        copy.write_text(copy.read_text()+'\n'+URL)
+        review_path=Path(m['artifacts']['review'])
+        review=json.loads(review_path.read_text())
+        review['sha256']['facebook_copy']=digest(copy)
+        write_manifest(review_path,review)
+        with self.assertRaisesRegex(ValueError,'website links'):
+            update_manifest(path,'facebook','pending',submission_started=True)
+        self.assertNotIn('publishing_started_at',load_manifest(path))
 
     def test_unknown_jpeg_application_metadata_is_rejected(self):
         p=self.root/'upload.jpg'

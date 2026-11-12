@@ -13,5 +13,5 @@ def build_content_plan(product):
         'source_url': product['canonical_url'],
         'related_topics': product.get('use_cases', [])[:4],
         'buyer_intent': 'B2B product evaluation, sample specification and sourcing inquiry',
-        'instructions': 'Use verified format, ingredients and sourcing facts. The title is a topic, not proof of benefits. Omit health efficacy claims. Preserve optional formula and packaging qualifiers; do not infer dosages, certification, finished ingredients or market eligibility.',
+        'instructions': 'Use verified format, ingredients and sourcing facts. The title is a topic, not proof of benefits. Omit health efficacy claims. Preserve optional formula and packaging qualifiers; do not infer dosages, certification, finished ingredients or market eligibility. Keep website links out of social copy; source_url is for evidence only. Preserve the platform copy format, inquiry CTA and hashtags.',
     }

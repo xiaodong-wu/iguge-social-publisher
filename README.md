@@ -10,7 +10,7 @@
 - `使用 $iguge-social-publisher，为指定产品生成 dry-run 草稿。`
 - `使用 $iguge-social-publisher，续跑指定 manifest 中未完成的步骤。`
 
-运行前安装 Python 3.10+ 和 `requirements.txt` 中的依赖。图片生成使用 Codex 内置 imagegen；实际发布需要对目标主页的有效管理权限及支持上传的浏览器或连接器。Google Sheets 记录需要既有表格写入权限。
+运行前安装 Python 3.10+ 和 `requirements.txt` 中的依赖。图片生成使用 Codex 内置 imagegen；实际发布使用 Chrome 浏览器插件及其扩展，连接已登录的 Chrome，通过页面完成身份核验、图片上传、发布和帖子核验。需要目标主页的有效管理权限；插件不可用时报告阻塞，不自动切换为独立 CDP 或其他发布方式。Google Sheets 记录仍使用既有授权工具和表格写入权限。
 
 ## 固定目标
 

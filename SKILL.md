@@ -33,9 +33,9 @@ description: 为 iGuge healthy 从 igugehealthy.com/products/ 随机或指定选
 
 ## 执行流程
 
-1. **预检。** 读取 [发布流程](references/publishing.md)。先查询可用发布连接器，
-   无合适连接器时使用当前支持的浏览器工具和已登录 Chrome。读取工具初始化文档，
-   不调用过时浏览器接口。确认两个固定账号均有发帖权限；Facebook 可执行一次已明确
+1. **预检。** 读取 [发布流程](references/publishing.md)，通过当前浏览器插件连接已登录
+   Chrome，使用插件操作 Facebook 和 LinkedIn 页面。先读取插件初始化与上传文档，
+   按文档完成连接和能力检查；插件不可用时停止并报告。确认两个固定账号均有发帖权限；Facebook 可执行一次已明确
    指向目标主页的两步身份切换。登录、MFA、验证码、身份不明或权限缺失时停止，
    在生成素材前报告阻塞。dry-run 不要求社媒登录。
 2. **选品。** 读取 [选品规则](references/product-selection.md)。执行
@@ -98,4 +98,5 @@ python3 scripts/validate_completion.py MANIFEST
 
 `--mode` 默认 `dry-run`。恢复任务沿用原模式，不把已完成 dry-run 修改成 live；若用户
 要求随后发布，创建明确的 live 运行，重新核验账号和素材。脚本只处理公开读取、本地素材
-和状态；真正发帖及 Sheets 写入由当前授权的连接器或浏览器完成。
+和状态；Facebook、LinkedIn 发帖与帖子核验通过浏览器插件完成；Sheets 写入仍按
+[记录规范](references/reporting.md) 使用既有授权工具。

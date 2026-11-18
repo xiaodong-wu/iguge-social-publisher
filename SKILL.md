@@ -33,11 +33,10 @@ description: 为 iGuge healthy 从 igugehealthy.com/products/ 随机或指定选
 
 ## 执行流程
 
-1. **预检。** 读取 [发布流程](references/publishing.md)，通过当前浏览器插件连接已登录
-   Chrome，使用插件操作 Facebook 和 LinkedIn 页面。先读取插件初始化与上传文档，
-   按文档完成连接和能力检查；插件不可用时停止并报告。确认两个固定账号均有发帖权限；Facebook 可执行一次已明确
-   指向目标主页的两步身份切换。登录、MFA、验证码、身份不明或权限缺失时停止，
-   在生成素材前报告阻塞。dry-run 不要求社媒登录。
+1. **预检。** 按 [发布流程](references/publishing.md) 从插件的实时连接列表识别 Chrome 扩展及对应的浏览器配置，
+   打开或复用两个固定目标页，分别核对当前发布身份和创建权限。Facebook 如需切换，仅执行一次明确指向
+   iGuge 的两步切换。插件诊断后仍不可用，或遇到登录、MFA、验证码、身份不明、权限缺失时，在生成素材前报告阻塞。
+   dry-run 不要求社媒登录。
 2. **选品。** 读取 [选品规则](references/product-selection.md)。执行
    `scripts/scrape_product.py --mode live --output-root RUNS_ROOT`；dry-run 改用
    `--mode dry-run`。默认输出当前工作目录的 `campaign-runs/`，不得存入技能目录。
@@ -56,9 +55,10 @@ description: 为 iGuge healthy 从 igugehealthy.com/products/ 随机或指定选
 5. **全批次校验。** 按内容规范完成 `evidence/review.json`，包含源事实、文案和图片
    审核及最终文件 SHA-256。执行 `scripts/validate_campaign.py MANIFEST`。修改已审核
    文件后重新检查并更新相应审核。全部通过才可发布；dry-run 在此结束并报告草稿路径。
-6. **双平台发布。** 遵循发布流程，在每个平台最终提交前记录
+6. **双平台发布。** 素材就绪后重新读取当前发布身份。核对编辑器或预览中的作者、文案、图片和可选 AI 设置，
+   确认无误后，紧邻每个平台最终提交前记录
    `scripts/update_manifest.py MANIFEST --channel facebook|linkedin --status pending --submission-started`。
-   核对预览、身份、对应格式的文案、图片及可选 AI 设置后仅提交一次。查看实际发布列表与帖子页面，保存核验记录、
+   每个平台仅提交一次。查看实际发布列表与帖子页面，保存核验记录、
    公开帖子链接和发布身份，再记录 `published`。结果不明先核对，禁止猜测重发。
 7. **报告。** 两条帖子核验成功后立即按 [记录规范](references/reporting.md) 写入并
    回读原 `social-auto-upload` 表的一条五列表格记录。C 列使用 `不适用（仅社媒）`，
